@@ -1,0 +1,185 @@
+// VMS SOW — PostgreSQL + Prisma
+// Roles: Hiring Manager, Approver, OPS Team, Supplier
+// Workflow: HM submit → OPS approve → Supplier accept/reject → Financial approval (by signature limit)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── NextAuth.js ─────────────────────────────────────────────────────────────
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+  @@unique([identifier, token])
+}
+
+// ─── Roles & Users ───────────────────────────────────────────────────────────
+
+enum Role {
+  HIRING_MANAGER  // HM: creates and submits SOW
+  OPS_TEAM        // OPS: reviews and approves after HM submit
+  APPROVER        // Financial approver (signature authority limit)
+  SUPPLIER        // Supplier: reviews and accepts/rejects SOW
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  passwordHash  String?   // for credentials login (dummy users)
+  role          Role
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts              Account[]
+  sessions              Session[]
+  signatureAuthority    SignatureAuthorityLimit?  // APPROVER only: max amount they can approve
+  submittedSows         SOW[]                     @relation("SOWSubmitter")
+  opsApprovals          SOWApproval[]             @relation("OPSApprover")
+  supplierApprovals     SOWApproval[]             @relation("SupplierActor")
+  financialApprovals    SOWApproval[]             @relation("FinancialApprover")
+}
+
+// Financial approvers have a signature authority limit (max SOW value they can approve).
+model SignatureAuthorityLimit {
+  id          String   @id @default(cuid())
+  userId     String   @unique
+  limitAmount Decimal @db.Decimal(14, 2) // e.g. 50000.00
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ─── SOW Workflow Status ─────────────────────────────────────────────────────
+
+enum SOWStatus {
+  DRAFT                    // HM editing
+  SUBMITTED                // HM submitted → waiting OPS
+  OPS_APPROVED             // OPS approved → waiting Supplier
+  SUPPLIER_ACCEPTED        // Supplier accepted → send to Financial (by limit)
+  SUPPLIER_REJECTED        // Supplier rejected
+  PENDING_FINANCIAL_APPROVAL  // Waiting financial approver (signature limit)
+  FINANCIALLY_APPROVED     // Financial approved → active
+  FINANCIALLY_REJECTED     // Financial rejected
+  ACTIVE                   // Fully approved and active
+}
+
+enum SOWTemplateType {
+  MANAGED_PROJECT
+  MANAGED_SERVICE
+  T_M
+}
+
+// ─── Vendor (Supplier) ─────────────────────────────────────────────────────
+
+model Vendor {
+  id        String   @id @default(cuid())
+  name      String
+  code      String?  @unique
+  email     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sows SOW[]
+}
+
+// ─── SOW & Approvals ───────────────────────────────────────────────────────
+
+model SOW {
+  id              String         @id @default(cuid())
+  title           String
+  description     String?       @db.Text
+  templateType    SOWTemplateType @default(MANAGED_PROJECT)
+  status         SOWStatus      @default(DRAFT)
+  language       String?       // e.g. "en", "es" — language of the SOW document
+  totalValue     Decimal?       @db.Decimal(14, 2)  // used for financial approval limit routing
+  paymentTerms   String?       @db.Text  // e.g. "Net 30", "Milestone-based"
+  effectiveDate   DateTime?     // period of performance start
+  endDate        DateTime?    // period of performance end
+  costCenter     String?       // charge code / cost center for project accounting
+  location       String?       @db.Text  // where work is performed (e.g. Remote, Onsite)
+  outOfScope     String?       @db.Text  // what is explicitly excluded
+  assumptions    String?       @db.Text  // assumptions both parties rely on
+  clientPocName  String?       // client point of contact for acceptance
+  clientPocEmail String?
+  vendorId       String?
+  submittedById  String?       // Hiring Manager who submitted
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  vendor       Vendor?    @relation(fields: [vendorId], references: [id])
+  submittedBy  User?      @relation("SOWSubmitter", fields: [submittedById], references: [id])
+  approvals    SOWApproval[]
+  milestones   SOWMilestone[]
+}
+
+// Milestone + amount for invoicing; totalValue on SOW = sum of milestone amounts
+model SOWMilestone {
+  id                 String    @id @default(cuid())
+  sowId              String
+  title              String    // e.g. "Phase 1 delivery", "Go-live"
+  amount             Decimal   @db.Decimal(14, 2)
+  dueDate            DateTime?
+  order              Int       @default(0)  // display order
+  recurring          Boolean   @default(false)  // e.g. monthly service fee, quarterly review
+  acceptanceCriteria String?   @db.Text  // how completion is verified (pass/fail)
+  acceptanceMethod   String?   // e.g. "Sign-off", "Test report", "Demo"
+
+  sow                SOW       @relation(fields: [sowId], references: [id], onDelete: Cascade)
+}
+
+// One record per workflow step (OPS, Supplier, Financial) per SOW.
+model SOWApproval {
+  id           String   @id @default(cuid())
+  sowId        String
+  step         String   // "OPS_REVIEW" | "SUPPLIER_REVIEW" | "FINANCIAL_APPROVAL"
+  status       String   // "PENDING" | "APPROVED" | "REJECTED"
+  comment      String?  @db.Text
+  actedAt      DateTime?
+  createdAt    DateTime @default(now())
+  opsApproverId        String?
+  supplierUserId       String?
+  financialApproverId  String?
+
+  sow              SOW   @relation(fields: [sowId], references: [id], onDelete: Cascade)
+  opsApprover      User? @relation("OPSApprover", fields: [opsApproverId], references: [id])
+  supplierUser     User? @relation("SupplierActor", fields: [supplierUserId], references: [id])
+  financialApprover User? @relation("FinancialApprover", fields: [financialApproverId], references: [id])
+
+  @@unique([sowId, step])
+}
