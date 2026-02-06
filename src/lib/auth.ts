@@ -5,6 +5,14 @@ import type { Role } from "@prisma/client";
 import * as bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 
+// Log which DB host we use (no credentials) for debugging
+try {
+  const u = process.env.DATABASE_URL ? new URL(process.env.DATABASE_URL) : null;
+  console.log("[auth] DATABASE_URL host:", u?.hostname ?? "not set");
+} catch {
+  console.log("[auth] DATABASE_URL host: (invalid URL)");
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true, // required for Railway/Vercel etc. (fixes UntrustedHost)
   adapter: PrismaAdapter(prisma),
@@ -18,10 +26,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        const email = String(credentials?.email ?? "").trim().toLowerCase();
+        const rawEmail = String(credentials?.email ?? "").trim();
+        const email = rawEmail.toLowerCase();
         const password = String(credentials?.password ?? "");
         const hasPassword = password.length > 0;
-        console.log("[auth] authorize: email=", email || "(empty)", "passwordPresent=", hasPassword);
+        console.log("[auth] authorize: rawEmail=", JSON.stringify(rawEmail), "email=", email || "(empty)", "passwordLen=", password.length);
         if (!email || !password) {
           console.log("[auth] reject: missing email or password");
           return null;
