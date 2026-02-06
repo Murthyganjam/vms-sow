@@ -4,6 +4,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import type { Role } from "@prisma/client";
 import * as bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { authConfig } from "@/lib/auth.config";
 
 // Log which DB host we use (no credentials) for debugging
 try {
@@ -14,10 +15,8 @@ try {
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  trustHost: true, // required for Railway/Vercel etc. (fixes UntrustedHost)
+  ...authConfig,
   adapter: PrismaAdapter(prisma),
-  session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60 },
-  pages: { signIn: "/login" },
   providers: [
     Credentials({
       name: "credentials",
@@ -69,27 +68,4 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
-  callbacks: {
-    authorized({ request, auth: token }) {
-      const path = request.nextUrl.pathname;
-      if (path === "/login") return true;
-      return !!token;
-    },
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id;
-        token.role = (user as { role?: Role }).role;
-        token.isActive = (user as { isActive?: boolean }).isActive;
-      }
-      return token;
-    },
-    async session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.id as string;
-        session.user.role = token.role as import("@prisma/client").Role;
-        session.user.isActive = token.isActive as boolean;
-      }
-      return session;
-    },
-  },
 });
