@@ -16,10 +16,26 @@ export type MilestoneInput = {
   acceptanceMethod: string;
 };
 
-const emptyForm = {
+type TemplateType = "MANAGED_PROJECT" | "MANAGED_SERVICE" | "T_M";
+
+const emptyForm: {
+  title: string;
+  description: string;
+  templateType: TemplateType;
+  language: string;
+  effectiveDate: string;
+  endDate: string;
+  costCenter: string;
+  location: string;
+  outOfScope: string;
+  assumptions: string;
+  clientPocName: string;
+  clientPocEmail: string;
+  paymentTerms: string;
+} = {
   title: "",
   description: "",
-  templateType: "MANAGED_PROJECT" as const,
+  templateType: "MANAGED_PROJECT",
   language: "",
   effectiveDate: "",
   endDate: "",
