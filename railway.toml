@@ -1,0 +1,12 @@
+# Railway deploy config for Next.js + Prisma
+# https://docs.railway.app/guides/config-as-code
+
+[build]
+builder = "nixpacks"
+# Install all deps (including dev) so Prisma/TS available for build
+buildCommand = "npm install --include=dev && npx prisma generate && npm run build"
+
+[deploy]
+startCommand = "npm start"
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10

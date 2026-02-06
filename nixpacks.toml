@@ -1,0 +1,5 @@
+# Pin Node.js 20 for Railway/Nixpacks (Next.js 15 + Prisma)
+# https://docs.railway.app/guides/config-as-code#nixpacks
+
+[variables]
+NIXPACKS_NODE_VERSION = "20"
