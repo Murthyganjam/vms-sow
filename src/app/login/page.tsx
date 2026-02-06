@@ -8,19 +8,36 @@ function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") ?? "/dashboard";
+  const urlError = searchParams.get("error");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    const res = await signIn("credentials", { email, password, redirect: false, callbackUrl });
-    if (res?.error) {
-      setError("Invalid email or password.");
-      return;
+    setLoading(true);
+    try {
+      const res = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+        callbackUrl,
+      });
+      if (res?.error) {
+        setError("Invalid email or password.");
+        setLoading(false);
+        return;
+      }
+      if (res?.ok) {
+        // Server has set the session cookie; full reload so next request includes it
+        window.location.href = callbackUrl;
+        return;
+      }
+      if (res === undefined) setError("Network or server error. Try again.");
+    } finally {
+      setLoading(false);
     }
-    // Use current origin so redirect works regardless of NEXTAUTH_URL port
-    if (res?.ok) window.location.href = `${window.location.origin}${callbackUrl}`;
   }
 
   return (
@@ -47,20 +64,23 @@ function LoginForm() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
-              placeholder="password123"
+              placeholder="CiscoFeb142026"
               required
             />
           </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {(error || urlError) && (
+            <p className="text-sm text-red-600">{error || "Sign-in failed. Try again."}</p>
+          )}
           <button
             type="submit"
-            className="w-full rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            disabled={loading}
+            className="w-full rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
           >
-            Sign in
+            {loading ? "Signing in…" : "Sign in"}
           </button>
         </form>
         <p className="mt-4 text-xs text-gray-400 text-center">
-          Dummy users: hm@vms.local, ops@vms.local, approver50@vms.local, approver200@vms.local, supplier@vms.local — password: password123
+          Dummy users: hm@vms.local, ops@vms.local, approver50@vms.local, approver200@vms.local, supplier@vms.local — password: CiscoFeb142026
         </p>
       </div>
     </div>

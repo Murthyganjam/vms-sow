@@ -3,14 +3,14 @@ import * as bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
-const HASHED_PASSWORD = bcrypt.hashSync("password123", 10);
+const HASHED_PASSWORD = bcrypt.hashSync("CiscoFeb142026", 10);
 
 async function main() {
   // ─── Dummy users (four roles) ───────────────────────────────────────────
 
   const hm = await prisma.user.upsert({
     where: { email: "hm@vms.local" },
-    update: {},
+    update: { passwordHash: HASHED_PASSWORD },
     create: {
       name: "Alex Hiring",
       email: "hm@vms.local",
@@ -21,7 +21,7 @@ async function main() {
 
   const ops = await prisma.user.upsert({
     where: { email: "ops@vms.local" },
-    update: {},
+    update: { passwordHash: HASHED_PASSWORD },
     create: {
       name: "Sam Ops",
       email: "ops@vms.local",
@@ -32,7 +32,7 @@ async function main() {
 
   const approver50 = await prisma.user.upsert({
     where: { email: "approver50@vms.local" },
-    update: {},
+    update: { passwordHash: HASHED_PASSWORD },
     create: {
       name: "Jordan Approver",
       email: "approver50@vms.local",
@@ -43,7 +43,7 @@ async function main() {
 
   const approver200 = await prisma.user.upsert({
     where: { email: "approver200@vms.local" },
-    update: {},
+    update: { passwordHash: HASHED_PASSWORD },
     create: {
       name: "Morgan Senior Approver",
       email: "approver200@vms.local",
@@ -54,7 +54,7 @@ async function main() {
 
   const supplier = await prisma.user.upsert({
     where: { email: "supplier@vms.local" },
-    update: {},
+    update: { passwordHash: HASHED_PASSWORD },
     create: {
       name: "Taylor Supplier",
       email: "supplier@vms.local",
@@ -107,7 +107,7 @@ async function main() {
   });
 
   console.log("Seed complete.");
-  console.log("Users (password for all: password123):");
+  console.log("Users (password for all: CiscoFeb142026):");
   console.log("  Hiring Manager: hm@vms.local");
   console.log("  OPS Team:      ops@vms.local");
   console.log("  Approver $50k: approver50@vms.local");
