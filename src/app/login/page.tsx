@@ -52,8 +52,9 @@ function LoginForm() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
-              placeholder="CiscoFeb142026"
+              placeholder="Enter password"
               required
+              autoComplete="current-password"
             />
           </div>
           {(error || urlError === "CredentialsSignin" || urlError) && (
@@ -70,10 +71,7 @@ function LoginForm() {
           </button>
         </form>
         <p className="mt-4 text-xs text-gray-400 text-center">
-          Use <strong>hm@vms.local</strong> (with &quot;vms&quot;) — password: CiscoFeb142026
-        </p>
-        <p className="mt-1 text-xs text-gray-400 text-center">
-          Also: ops@vms.local, approver50@vms.local, approver200@vms.local, supplier@vms.local
+          Seeded users: <strong>hm@vms.local</strong> (use &quot;vms&quot; not &quot;vm&quot;), ops@vms.local, approver50@vms.local, approver200@vms.local, supplier@vms.local. Same password for all.
         </p>
       </div>
     </div>
