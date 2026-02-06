@@ -20,13 +20,35 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       async authorize(credentials) {
         const email = String(credentials?.email ?? "").trim().toLowerCase();
         const password = String(credentials?.password ?? "");
-        if (!email || !password) return null;
-        const user = await prisma.user.findUnique({
-          where: { email, isActive: true },
-        });
-        if (!user?.passwordHash) return null;
+        const hasPassword = password.length > 0;
+        console.log("[auth] authorize: email=", email || "(empty)", "passwordPresent=", hasPassword);
+        if (!email || !password) {
+          console.log("[auth] reject: missing email or password");
+          return null;
+        }
+        let user;
+        try {
+          user = await prisma.user.findUnique({
+            where: { email, isActive: true },
+          });
+        } catch (e) {
+          console.error("[auth] DB error:", e instanceof Error ? e.message : String(e));
+          return null;
+        }
+        if (!user) {
+          console.log("[auth] reject: no user found for email=", email);
+          return null;
+        }
+        if (!user.passwordHash) {
+          console.log("[auth] reject: user has no passwordHash, id=", user.id);
+          return null;
+        }
         const ok = await bcrypt.compare(password, user.passwordHash);
-        if (!ok) return null;
+        if (!ok) {
+          console.log("[auth] reject: password mismatch for email=", email);
+          return null;
+        }
+        console.log("[auth] success: id=", user.id, "email=", email);
         return {
           id: user.id,
           name: user.name,
