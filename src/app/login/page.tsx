@@ -53,7 +53,7 @@ function LoginForm() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
-              placeholder="hm@vms.local"
+              placeholder="hm@vms.local (vms not vm)"
               required
             />
           </div>
@@ -80,7 +80,10 @@ function LoginForm() {
           </button>
         </form>
         <p className="mt-4 text-xs text-gray-400 text-center">
-          Dummy users: hm@vms.local, ops@vms.local, approver50@vms.local, approver200@vms.local, supplier@vms.local — password: CiscoFeb142026
+          Use <strong>hm@vms.local</strong> (with &quot;vms&quot;) — password: CiscoFeb142026
+        </p>
+        <p className="mt-1 text-xs text-gray-400 text-center">
+          Also: ops@vms.local, approver50@vms.local, approver200@vms.local, supplier@vms.local
         </p>
       </div>
     </div>
