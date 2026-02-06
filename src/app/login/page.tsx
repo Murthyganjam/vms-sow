@@ -17,27 +17,15 @@ function LoginForm() {
     e.preventDefault();
     setError("");
     setLoading(true);
-    try {
-      const res = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
-        callbackUrl,
-      });
-      if (res?.error) {
-        setError("Invalid email or password.");
-        setLoading(false);
-        return;
-      }
-      if (res?.ok) {
-        // Server has set the session cookie; full reload so next request includes it
-        window.location.href = callbackUrl;
-        return;
-      }
-      if (res === undefined) setError("Network or server error. Try again.");
-    } finally {
-      setLoading(false);
-    }
+    // Use redirect: true so NextAuth returns 302 + Set-Cookie in same response;
+    // browser follows redirect with cookie, so dashboard sees session (fixes "stuck on login")
+    await signIn("credentials", {
+      email,
+      password,
+      redirect: true,
+      callbackUrl,
+    });
+    setLoading(false);
   }
 
   return (
@@ -68,8 +56,10 @@ function LoginForm() {
               required
             />
           </div>
-          {(error || urlError) && (
-            <p className="text-sm text-red-600">{error || "Sign-in failed. Try again."}</p>
+          {(error || urlError === "CredentialsSignin" || urlError) && (
+            <p className="text-sm text-red-600">
+              {error || (urlError === "CredentialsSignin" ? "Invalid email or password." : "Sign-in failed. Try again.")}
+            </p>
           )}
           <button
             type="submit"
