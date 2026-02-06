@@ -117,15 +117,6 @@ export function SOWWorkflowActions({
             rows={2}
           />
           <div className="flex gap-2">
-            {sessionRole === "HIRING_MANAGER" && sow.status === "DRAFT" && (
-              <button
-                onClick={handleSubmit}
-                disabled={loading}
-                className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-              >
-                Submit SOW
-              </button>
-            )}
             {sessionRole === "OPS_TEAM" && sow.status === "SUBMITTED" && (
               <button
                 onClick={handleOpsApprove}
